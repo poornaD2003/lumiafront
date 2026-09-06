@@ -53,7 +53,7 @@ export default function DailyNetProfitChart({ data }: Props) {
           </LineChart>
         </ResponsiveContainer>
       ) : (
-        <p className="flex h-[280px] items-center justify-center text-sm text-gray-400">No daily profit records yet.</p>
+        <p className="flex h-70 items-center justify-center text-sm text-gray-400">No daily profit records yet.</p>
       )}
     </div>
   );

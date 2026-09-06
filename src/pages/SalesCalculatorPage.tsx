@@ -244,7 +244,7 @@ export default function SalesCalculatorPage() {
                 <Line type="monotone" dataKey="netProfit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
               </LineChart>
             </ResponsiveContainer>
-          ) : <p className="flex h-[280px] items-center justify-center text-sm text-gray-400">Add sales to see the daily profit chart.</p>}
+          ) : <p className="flex h-70 items-center justify-center text-sm text-gray-400">Add sales to see the daily profit chart.</p>}
         </section>
 
         <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
@@ -252,7 +252,7 @@ export default function SalesCalculatorPage() {
             <h2 className="text-sm font-semibold text-gray-700">Manual sales</h2>
             <span className="text-xs text-gray-400">{entries.length} entries</span>
           </div>
-          <div className="max-h-[280px] overflow-auto">
+          <div className="max-h-70 overflow-auto">
             {entries.length === 0 ? <p className="p-5 text-sm text-gray-400">No sales added yet.</p> : entries.map((entry) => {
               const product = products.find((item) => item.id === entry.productId);
               const profit = entry.quantity * (entry.sellingPrice - (product?.costPrice ?? 0));
