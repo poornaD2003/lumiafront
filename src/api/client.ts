@@ -9,6 +9,7 @@ import type {
   RegionSales,
   InventoryAlert,
   ChatMessage,
+  PricingProduct,
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL 
@@ -58,3 +59,6 @@ export const fetchChatHistory = () =>
 
 export const clearChatHistory = () =>
   api.delete<{ success: boolean }>('/agent/history').then((r) => r.data);
+
+export const fetchPricingProducts = () =>
+  api.get<{ products: PricingProduct[] }>('/pricing/products').then((r) => r.data.products);
