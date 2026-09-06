@@ -64,6 +64,15 @@ export interface PricingProduct {
   unitPrice: number;
 }
 
+export interface PricingProduct {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  costPrice: number;
+  unitPrice: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
