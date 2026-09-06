@@ -55,6 +55,14 @@ export interface InventoryAlert {
   stockQuantity: number;
   reorderLevel: number;
 }
+export interface PricingProduct {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  costPrice: number;
+  unitPrice: number;
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
