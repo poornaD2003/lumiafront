@@ -9,8 +9,8 @@ import {
   YAxis,
 } from 'recharts';
 import { Plus, Trash2 } from 'lucide-react';
-import { fetchPricingProducts } from '../api/client';
-import type { PricingProduct } from '../types';
+import { fetchDailyNetProfit, fetchPricingProducts, saveDailyNetProfit } from '../api/client';
+import type { DailyNetProfit, PricingProduct } from '../types';
 
 interface SaleEntry {
   id: number;
@@ -29,6 +29,7 @@ function formatCurrency(value: number) {
 export default function SalesCalculatorPage() {
   const [products, setProducts] = useState<PricingProduct[]>([]);
   const [entries, setEntries] = useState<SaleEntry[]>([]);
+  const [history, setHistory] = useState<DailyNetProfit[]>([]);
   const [date, setDate] = useState(today);
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -37,9 +38,10 @@ export default function SalesCalculatorPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPricingProducts()
-      .then((loadedProducts) => {
+    Promise.all([fetchPricingProducts(), fetchDailyNetProfit()])
+      .then(([loadedProducts, loadedHistory]) => {
         setProducts(loadedProducts);
+        setHistory(loadedHistory);
         if (loadedProducts[0]) {
           setProductId(String(loadedProducts[0].id));
           setSellingPrice(String(loadedProducts[0].unitPrice));
@@ -51,7 +53,7 @@ export default function SalesCalculatorPage() {
 
   const selectedProduct = products.find((product) => product.id === Number(productId));
 
-  const dailyProfit = useMemo(() => {
+  const sessionDailyProfit = useMemo(() => {
     const totals = new Map<string, { revenue: number; cost: number; netProfit: number }>();
 
     entries.forEach((entry) => {
@@ -70,13 +72,24 @@ export default function SalesCalculatorPage() {
     return Array.from(totals.entries())
       .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
       .map(([entryDate, totalsForDay]) => ({
-        date: new Date(`${entryDate}T00:00:00`).toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-        }),
+        date: entryDate,
         ...totalsForDay,
       }));
   }, [entries, products]);
+
+  const dailyProfit = useMemo(() => {
+    const merged = new Map(history.map((item) => [item.date, item]));
+    sessionDailyProfit.forEach((item) => {
+      const existing = merged.get(item.date);
+      merged.set(item.date, {
+        date: item.date,
+        revenue: (existing?.revenue ?? 0) + item.revenue,
+        costOfGoods: (existing?.costOfGoods ?? 0) + item.cost,
+        netProfit: (existing?.netProfit ?? 0) + item.netProfit,
+      });
+    });
+    return Array.from(merged.values()).sort((first, second) => first.date.localeCompare(second.date));
+  }, [history, sessionDailyProfit]);
 
   const totals = useMemo(
     () => entries.reduce(
@@ -103,13 +116,35 @@ export default function SalesCalculatorPage() {
     if (product) setSellingPrice(String(product.unitPrice));
   };
 
-  const addEntry = () => {
+  const persistDay = async (nextEntries: SaleEntry[], entryDate: string) => {
+    const dayTotals = nextEntries.reduce(
+      (summary, entry) => {
+        const product = products.find((item) => item.id === entry.productId);
+        if (!product || entry.date !== entryDate) return summary;
+        const revenue = entry.quantity * entry.sellingPrice;
+        const cost = entry.quantity * product.costPrice;
+        return { revenue: summary.revenue + revenue, costOfGoods: summary.costOfGoods + cost };
+      },
+      { revenue: 0, costOfGoods: 0 },
+    );
+    const saved = await saveDailyNetProfit({
+      date: entryDate,
+      ...dayTotals,
+      netProfit: dayTotals.revenue - dayTotals.costOfGoods,
+    });
+    setHistory((currentHistory) => [
+      ...currentHistory.filter((item) => item.date !== saved.date),
+      saved,
+    ].sort((first, second) => first.date.localeCompare(second.date)));
+  };
+
+  const addEntry = async () => {
     const parsedQuantity = Number(quantity);
     const parsedPrice = Number(sellingPrice);
     if (!date || !selectedProduct || parsedQuantity <= 0 || parsedPrice <= 0) return;
 
-    setEntries((currentEntries) => [
-      ...currentEntries,
+    const nextEntries = [
+      ...entries,
       {
         id: Date.now(),
         date,
@@ -117,8 +152,25 @@ export default function SalesCalculatorPage() {
         quantity: parsedQuantity,
         sellingPrice: parsedPrice,
       },
-    ]);
+    ];
+    setEntries(nextEntries);
+    try {
+      await persistDay(nextEntries, date);
+      setError(null);
+    } catch {
+      setError('Sale calculated locally, but the daily profit could not be saved.');
+    }
     setQuantity('1');
+  };
+
+  const removeEntry = async (entryId: number, entryDate: string) => {
+    const nextEntries = entries.filter((entry) => entry.id !== entryId);
+    setEntries(nextEntries);
+    try {
+      await persistDay(nextEntries, entryDate);
+    } catch {
+      setError('Sale removed locally, but the daily profit history could not be updated.');
+    }
   };
 
   return (
@@ -206,7 +258,7 @@ export default function SalesCalculatorPage() {
               const profit = entry.quantity * (entry.sellingPrice - (product?.costPrice ?? 0));
               return <div key={entry.id} className="flex items-center justify-between gap-3 border-b border-gray-50 p-4 last:border-0">
                 <div className="min-w-0"><p className="truncate text-sm font-medium text-gray-800">{product?.name}</p><p className="text-xs text-gray-500">{entry.date} · {entry.quantity} × {formatCurrency(entry.sellingPrice)}</p></div>
-                <div className="flex items-center gap-3"><span className={`text-sm font-semibold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(profit)}</span><button type="button" aria-label={`Remove ${product?.name}`} onClick={() => setEntries((currentEntries) => currentEntries.filter((item) => item.id !== entry.id))} className="text-gray-400 hover:text-red-500"><Trash2 size={16} /></button></div>
+                <div className="flex items-center gap-3"><span className={`text-sm font-semibold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(profit)}</span><button type="button" aria-label={`Remove ${product?.name}`} onClick={() => removeEntry(entry.id, entry.date)} className="text-gray-400 hover:text-red-500"><Trash2 size={16} /></button></div>
               </div>;
             })}
           </div>

@@ -64,6 +64,13 @@ export interface PricingProduct {
   unitPrice: number;
 }
 
+export interface DailyNetProfit {
+  date: string;
+  revenue: number;
+  costOfGoods: number;
+  netProfit: number;
+}
+
 export interface PricingProduct {
   id: number;
   name: string;
