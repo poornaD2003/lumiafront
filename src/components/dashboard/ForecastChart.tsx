@@ -22,11 +22,10 @@ function formatPeriod(period: string) {
 }
 
 function formatValue(value: number) {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value}`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
 }
-
+ 
 export default function ForecastChart({ data }: Props) {
   const chartData = data.map((d) => ({
     ...d,
@@ -46,17 +45,15 @@ export default function ForecastChart({ data }: Props) {
             tickLine={false}
           />
           <YAxis
-            tickFormatter={formatValue}
+          tickFormatter={(value) => `LKR ${(value / 100000).toFixed(1)}L`}
             tick={{ fontSize: 11, fill: '#94a3b8' }}
             axisLine={false}
             tickLine={false}
             width={54}
           />
           <Tooltip
-            formatter={(value, name) => [
-              formatValue(Number(value)),
-              name === 'actual' ? 'Actual' : 'Predicted',
-            ]}
+            formatter={(value) => typeof value === 'number' ? `LKR ${value.toLocaleString()}` : value}
+           
             contentStyle={{
               borderRadius: 8,
               border: '1px solid #e2e8f0',
