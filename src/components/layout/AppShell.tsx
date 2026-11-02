@@ -6,7 +6,7 @@ export default function AppShell() {
   const isChat = pathname === '/chat';
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
+    <div className="flex min-h-screen not-only: flex-col bg-gray-50 lg:flex-row">
       <Sidebar />
       <main className={`min-w-0 flex-1 overflow-auto ${isChat ? 'p-0' : 'p-4 sm:p-6'}`}>
         <Outlet />
